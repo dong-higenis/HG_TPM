@@ -358,8 +358,6 @@ static void Get_SerialNum(void)
     IntToUnicode(deviceserial0, &USBD_StringSerial[2], 8);
     IntToUnicode(deviceserial1, &USBD_StringSerial[18], 4);
 
-    //const char prefix[] = "FDCAN_";
-    //uint32_t prefix_len = 6;
     const char prefix[] = "FDCAN_";
     uint32_t prefix_len = 6;
 
