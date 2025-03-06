@@ -49,7 +49,7 @@ static bool buttonGetPin(uint8_t ch);
 
 static const button_pin_t button_pin[BUTTON_MAX_CH] =
 {
-  {GPIOA, GPIO_PIN_7,  GPIO_PIN_RESET}, // P_IN1 PA7 
+  {GPIOA, GPIO_PIN_9,  GPIO_PIN_RESET}, // P_IN1 PA9
   {GPIOB, GPIO_PIN_0,  GPIO_PIN_RESET}, // P_IN2 PB0
   {GPIOB, GPIO_PIN_1,  GPIO_PIN_RESET}, // P_IN3 PB1
   {GPIOB, GPIO_PIN_2,  GPIO_PIN_RESET}, // P_IN4 PB2
