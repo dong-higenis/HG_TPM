@@ -49,7 +49,7 @@
 #define HW_SSD1322_MAX_CH 1
 
 #define _USE_HW_GPIO
-#define HW_GPIO_MAX_CH 15
+#define HW_GPIO_MAX_CH 16
 
 #define _USE_HW_SPI
 #define HW_SPI_MAX_CH 1

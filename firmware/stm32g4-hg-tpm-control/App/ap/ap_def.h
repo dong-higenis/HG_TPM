@@ -10,4 +10,6 @@ typedef enum
   ID_LCD_BTN_STATE  = 0x151,
 } LcdButtonMsgId_t;
 
+void test_fatfs(void);
+
 #endif

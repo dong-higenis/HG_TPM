@@ -7,6 +7,9 @@ void apInit(void)
   cliOpen(HW_UART_CH_DEBUG, 115200);
   logBoot(true);
   apOledInit();
+
+  //  test  read Txt
+  test_fatfs();
 }
 
 void apMain(void)

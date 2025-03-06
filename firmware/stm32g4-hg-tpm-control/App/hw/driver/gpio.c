@@ -33,7 +33,8 @@ const gpio_tbl_t gpio_tbl[HW_GPIO_MAX_CH] =
   {CAN_STB_GPIO_Port,    CAN_STB_Pin,    _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "CAN_STB"   },
   //  SD_CD
   {SD_CD_GPIO_Port,      SD_CD_Pin,      _DEF_INPUT,  GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "SD_CD"     },
-
+  //  SD_CS
+  {SD_CS_GPIO_Port,      SD_CS_Pin,      _DEF_OUTPUT, GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "SD_CS"     },
 };
 
 

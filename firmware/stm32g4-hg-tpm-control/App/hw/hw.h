@@ -23,6 +23,11 @@ extern "C" {
 #include "lcd.h"
 #include "button.h"
 
+#include "ff.h"
+#include "ffconf.h"
+#include "diskio.h"
+#include "sd_driver.h"
+
 bool hwInit(void);
 
 

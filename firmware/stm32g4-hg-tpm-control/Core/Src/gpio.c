@@ -54,8 +54,8 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, LINK_LED_Pin|STATUS_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, P_LED3_Pin|P_LED4_Pin|LCD_DC_Pin|CAN_STB_Pin
-                          |LCD_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, P_LED3_Pin|P_LED4_Pin|SD_CS_Pin|LCD_DC_Pin
+                          |CAN_STB_Pin|LCD_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, P_IN3_Pin|P_LED1_Pin|P_LED2_Pin|LCD_RST_Pin
@@ -69,9 +69,9 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PAPin PAPin PAPin PAPin
-                           PAPin */
-  GPIO_InitStruct.Pin = P_LED3_Pin|P_LED4_Pin|LCD_DC_Pin|CAN_STB_Pin
-                          |LCD_CS_Pin;
+                           PAPin PAPin */
+  GPIO_InitStruct.Pin = P_LED3_Pin|P_LED4_Pin|SD_CS_Pin|LCD_DC_Pin
+                          |CAN_STB_Pin|LCD_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

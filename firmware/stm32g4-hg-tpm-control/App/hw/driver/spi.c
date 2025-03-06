@@ -34,6 +34,7 @@ typedef struct
 
 spi_t spi_tbl[SPI_MAX_CH];
 
+extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi3;
 
 
@@ -294,7 +295,12 @@ void spiAttachTxInterrupt(uint8_t ch, void (*func)())
   p_spi->func_tx = func;
 }
 
-
+uint8_t SpiSdcardDriver(uint8_t data)
+{
+  uint8_t ret = 0;
+  HAL_SPI_TransmitReceive(&hspi1, &data, &ret, 1, 10);
+  return ret;
+}
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {

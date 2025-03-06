@@ -71,6 +71,8 @@ void Error_Handler(void);
 #define U2_TXD_GPIO_Port GPIOA
 #define U2_RXD_Pin GPIO_PIN_3
 #define U2_RXD_GPIO_Port GPIOA
+#define SD_CS_Pin GPIO_PIN_4
+#define SD_CS_GPIO_Port GPIOA
 #define SPI1_SD_CLK_Pin GPIO_PIN_5
 #define SPI1_SD_CLK_GPIO_Port GPIOA
 #define SPI1_MISO_SD_DAT0_Pin GPIO_PIN_6
