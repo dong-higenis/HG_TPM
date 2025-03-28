@@ -110,6 +110,7 @@ bool canThreadupdate(void)
       {        
         is_ping = false;
         logPrintf("[  ] ping stopped\n");
+        canCmdClose(NULL);
       }
       ping_cnt = 0;
     }
@@ -156,8 +157,11 @@ bool canCmdClose(cmd_t *p_cmd)
 {
   logPrintf("[  ] canCmdClose()\n");
   is_open = false;
-
-  cmdObj()->sendResp(p_cmd, OK, NULL, 0);
+  canClose(_DEF_CAN1);
+  if (p_cmd != NULL)
+  {
+    cmdObj()->sendResp(p_cmd, OK, NULL, 0);
+  }
   return true;
 }
 

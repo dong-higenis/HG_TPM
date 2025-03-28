@@ -198,7 +198,7 @@ bool canOpen(uint8_t ch, CanMode_t mode, CanFrame_t frame, CanBaud_t baud, CanBa
       p_can->Init.ClockDivider          = FDCAN_CLOCK_DIV1;
       p_can->Init.FrameFormat           = frame_tbl[frame];
       p_can->Init.Mode                  = mode_tbl[mode];
-      p_can->Init.AutoRetransmission    = DISABLE;
+      p_can->Init.AutoRetransmission    = ENABLE;
       p_can->Init.TransmitPause         = ENABLE;
       p_can->Init.ProtocolException     = ENABLE;
       p_can->Init.NominalPrescaler      = p_baud_normal[baud].prescaler;
@@ -264,6 +264,7 @@ bool canOpen(uint8_t ch, CanMode_t mode, CanFrame_t frame, CanBaud_t baud, CanBa
     return false;
   }
 
+  qbufferFlush(&can_tbl[ch].q_msg);
 
   can_tbl[ch].is_open = true;
   HAL_GPIO_WritePin(CAN_STB_GPIO_Port, CAN_STB_Pin, GPIO_PIN_RESET);
@@ -282,12 +283,13 @@ void canClose(uint8_t ch)
 {
   if(ch >= CAN_MAX_CH) return;
 
-  HAL_GPIO_WritePin(CAN_STB_GPIO_Port, CAN_STB_Pin, GPIO_PIN_SET);
-
   if (can_tbl[ch].is_open)
   {
-    HAL_FDCAN_DeInit(can_tbl[ch].hfdcan);
+    logPrintf("HAL_FDCAN_DeInit()\n");
+    HAL_FDCAN_DeInit(&can_tbl[ch].hfdcan);
+    can_tbl[ch].is_open = false;
   }
+  qbufferFlush(&can_tbl[ch].q_msg);
   return;
 }
 
@@ -416,7 +418,7 @@ bool canMsgWrite(uint8_t ch, can_msg_t *p_msg, uint32_t timeout)
   if(ch > CAN_MAX_CH) return false;
 
   if (can_tbl[ch].err_code & CAN_ERR_BUS_OFF) return false;
-  if (can_tbl[ch].err_code & CAN_ERR_PASSIVE) return false;
+  //if (can_tbl[ch].err_code & CAN_ERR_PASSIVE) return false;
 
 
   p_can = can_tbl[ch].hfdcan;
@@ -495,6 +497,8 @@ void canRecovery(uint8_t ch)
   HAL_FDCAN_Stop(can_tbl[ch].hfdcan);
   HAL_FDCAN_Start(can_tbl[ch].hfdcan);
 
+  qbufferFlush(&can_tbl[ch].q_msg);
+
   can_tbl[ch].recovery_cnt++;
 }
 
@@ -519,7 +523,7 @@ bool canUpdate(void)
   };
   bool ret = false;
   can_tbl_t *p_can;
-
+  static uint32_t pre_time = 0;
 
   for (int i=0; i<CAN_MAX_CH; i++)
   {
@@ -532,7 +536,9 @@ bool canUpdate(void)
         if (p_can->err_code & CAN_ERR_BUS_OFF)
         {
           canRecovery(i);
+          logPrintf("canRecovery() - Begin\n");
           p_can->state = CAN_STATE_WAIT;
+          pre_time = millis();
           ret = true;
         }
         break;
@@ -540,7 +546,13 @@ bool canUpdate(void)
       case CAN_STATE_WAIT:
         if ((p_can->err_code & CAN_ERR_BUS_OFF) == 0)
         {
+          logPrintf("canRecovery() - OK\n");
           p_can->state = CAN_STATE_IDLE;
+        }
+        if (millis()-pre_time >= 5000)
+        {
+          p_can->state = CAN_STATE_IDLE;
+          logPrintf("canRecovery() - Fail\n");
         }
         break;
     }
@@ -708,47 +720,45 @@ void canErrPrint(uint8_t ch)
 
 void canErrUpdate(uint8_t ch)
 {
-    FDCAN_ProtocolStatusTypeDef protocol_status;
-    CanEvent_t can_evt = CAN_EVT_NONE;
-    uint16_t rx_err_cnt = canGetRxErrCount(ch);
-    uint16_t tx_err_cnt = canGetTxErrCount(ch);
-    
-    HAL_FDCAN_GetProtocolStatus((FDCAN_HandleTypeDef* )&can_tbl[ch].hfdcan, &protocol_status);
-    
-    if (rx_err_cnt > 127 || tx_err_cnt > 127)
-    {
-        can_tbl[ch].err_code |= CAN_ERR_PASSIVE;
-        can_evt = CAN_EVT_ERR_PASSIVE;
-    }
-    else
-    {
-        can_tbl[ch].err_code &= ~CAN_ERR_PASSIVE;
-    }
+  FDCAN_ProtocolStatusTypeDef protocol_status;
+  CanEvent_t can_evt = CAN_EVT_NONE;
 
-    if (rx_err_cnt > 96 || tx_err_cnt > 96)
-    {
-        can_tbl[ch].err_code |= CAN_ERR_WARNING;
-        can_evt = CAN_EVT_ERR_WARNING;
-    }
-    else
-    {
-        can_tbl[ch].err_code &= ~CAN_ERR_WARNING;
-    }
-    
-    if (protocol_status.BusOff)
-    {
-        can_tbl[ch].err_code |= CAN_ERR_BUS_OFF;
-        can_evt = CAN_EVT_ERR_BUS_OFF;
-    }
-    else
-    {
-        can_tbl[ch].err_code &= ~CAN_ERR_BUS_OFF;
-    }
+  HAL_FDCAN_GetProtocolStatus(&can_tbl[ch].hfdcan, &protocol_status);
 
-    if (can_tbl[ch].handler != NULL && can_evt != CAN_EVT_NONE)
-    {
-        (*can_tbl[ch].handler)(ch, can_evt, NULL);
-    }   
+  if (protocol_status.ErrorPassive)
+  {
+    can_tbl[ch].err_code |= CAN_ERR_PASSIVE;
+    can_evt = CAN_EVT_ERR_PASSIVE;
+  }
+  else
+  {
+    can_tbl[ch].err_code &= ~CAN_ERR_PASSIVE;
+  }
+
+  if (protocol_status.Warning)
+  {
+    can_tbl[ch].err_code |= CAN_ERR_WARNING;
+    can_evt = CAN_EVT_ERR_WARNING;
+  }
+  else
+  {
+    can_tbl[ch].err_code &= ~CAN_ERR_WARNING;
+  }
+
+  if (protocol_status.BusOff)
+  {
+    can_tbl[ch].err_code |= CAN_ERR_BUS_OFF;
+    can_evt = CAN_EVT_ERR_BUS_OFF;
+  }
+  else
+  {
+    can_tbl[ch].err_code &= ~CAN_ERR_BUS_OFF;
+  }
+
+  if (can_tbl[ch].handler != NULL && can_evt != CAN_EVT_NONE)
+  {
+    (*can_tbl[ch].handler)(ch, can_evt, NULL);
+  }
 }
 
 void canInfoPrint(uint8_t ch)

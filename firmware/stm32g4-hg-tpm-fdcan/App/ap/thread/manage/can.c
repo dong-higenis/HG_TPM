@@ -4,7 +4,6 @@
 #include "mode.h"
 #include "common/event.h"
 #include "cmd/cmd_thread.h"
-#include "msg_queue.h"
 
 
 static bool canThreadinit(void);
@@ -111,6 +110,7 @@ bool canThreadupdate(void)
       {        
         is_ping = false;
         logPrintf("[  ] ping stopped\n");
+        canCmdClose(NULL);
       }
       ping_cnt = 0;
     }
@@ -157,8 +157,11 @@ bool canCmdClose(cmd_t *p_cmd)
 {
   logPrintf("[  ] canCmdClose()\n");
   is_open = false;
-
-  cmdObj()->sendResp(p_cmd, OK, NULL, 0);
+  canClose(_DEF_CAN1);
+  if (p_cmd != NULL)
+  {
+    cmdObj()->sendResp(p_cmd, OK, NULL, 0);
+  }
   return true;
 }
 
@@ -207,17 +210,6 @@ bool canCmdData(cmd_t *p_cmd)
   // logPrintf("dlc     %d\n", msg.dlc);
 
   canMsgWrite(can_ch, &msg, 10);
-
-  // 퀵키 테스트 관련 ID인 경우 큐에 메시지 추가
-  if (msg.id == ID_QUICK_KEY_ACTION && msg.length == 2)
-  {
-      queue_msg_t queue_msg = {
-          .msg_id = msg.id,
-          .length = msg.length
-      };
-      memcpy(queue_msg.data, msg.data, msg.length);
-      msgQueuePut(&queue_msg);
-  }
 
   return true;
 }
