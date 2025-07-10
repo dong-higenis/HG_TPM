@@ -26,6 +26,10 @@
     "lcd.h": "c",
     "font_han.h": "c",
     "ssd1322.h": "c",
-    "button.h": "c"
+    "button.h": "c",
+    "ap_button.h": "c",
+    "hw_test.h": "c",
+    "ap_hw_test.h": "c",
+    "util.h": "c"
   }
 }

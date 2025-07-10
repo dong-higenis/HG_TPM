@@ -1,15 +1,16 @@
 #include "ap.h"
 #include "button/ap_button.h"
-#include "oled/ap_oled.h"
+#include "hwTest/ap_hw_test.h"
 
 void apInit(void)
 {
   cliOpen(HW_UART_CH_DEBUG, 115200);
   logBoot(true);
-  apOledInit();
 
   //  test  read Txt
   test_fatfs();
+
+  apHwTestInit();
 }
 
 void apMain(void)
@@ -26,7 +27,7 @@ void apMain(void)
     }
     cliMain();
     canMain();
-    apOledMain();
     apButtonMain();
+    apHwTestMain();
   }
 }
