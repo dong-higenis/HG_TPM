@@ -52,7 +52,7 @@
 #define HW_ADC_MAX_CH ADC_PIN_MAX
 
 #define _USE_HW_GPIO
-#define HW_GPIO_MAX_CH 12
+#define HW_GPIO_MAX_CH 9
 
 #define _USE_HW_I2C
 #define HW_I2C_MAX_CH  1
@@ -60,7 +60,6 @@
 
 typedef enum
 {
-  CAN_STB = 0,
   P_OUT1, // RED
   P_OUT2, // YELLOW
   P_OUT3, // GREEN

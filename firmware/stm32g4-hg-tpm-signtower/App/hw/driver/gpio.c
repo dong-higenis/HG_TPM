@@ -17,7 +17,6 @@ typedef struct
 
 const gpio_tbl_t gpio_tbl[HW_GPIO_MAX_CH] =
 {
-  {CAN_STB_GPIO_Port,   CAN_STB_Pin,   _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "CAN_STB"  },
   {P_OUT1_GPIO_Port,    P_OUT1_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT1"   }, // LIGHT_1 - RED
   {P_OUT2_GPIO_Port,    P_OUT2_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT2"   }, // LIGHT_2 - YELLOW
   {P_OUT3_GPIO_Port,    P_OUT3_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT3"   }, // LIGHT_3 - GREEN
@@ -26,9 +25,7 @@ const gpio_tbl_t gpio_tbl[HW_GPIO_MAX_CH] =
   {P_OUT6_GPIO_Port,    P_OUT6_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT6"   }, // LIGHT_6 - X
   {P_OUT7_GPIO_Port,    P_OUT7_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT7"   }, // LIGHT_7 - X
   {P_OUT8_GPIO_Port,    P_OUT8_Pin,    _DEF_OUTPUT,       GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_LOW,  "P_OUT8"   }, // BLINK_ENABLE, 
-  {ID0_GPIO_Port,       ID0_Pin,       _DEF_INPUT_PULLUP, GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "ID0"      },
   {ID1_GPIO_Port,       ID1_Pin,       _DEF_INPUT_PULLUP, GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "ID1"      },
-  {ID2_GPIO_Port,       ID2_Pin,       _DEF_INPUT_PULLUP, GPIO_PIN_SET, GPIO_PIN_RESET, _DEF_HIGH, "ID2"      },
 };
 
 

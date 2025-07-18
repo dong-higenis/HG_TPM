@@ -284,7 +284,6 @@ bool canOpen(uint8_t ch, CanMode_t mode, CanFrame_t frame, CanBaud_t baud, CanBa
 
 
   can_tbl[ch].is_open = true;
-  HAL_GPIO_WritePin(CAN_STB_GPIO_Port, CAN_STB_Pin, GPIO_PIN_RESET);
 
   return ret;
 }
@@ -299,8 +298,6 @@ bool canIsOpen(uint8_t ch)
 void canClose(uint8_t ch)
 {
   if(ch >= CAN_MAX_CH) return;
-
-  HAL_GPIO_WritePin(CAN_STB_GPIO_Port, CAN_STB_Pin, GPIO_PIN_SET);
 
   if (can_tbl[ch].is_open)
   {

@@ -86,7 +86,7 @@ bool uartInit(void)
       case HW_UART_CH_USB:
         if(uart_hw_tbl[i].uart_type == UART_TYPE_RS485)
         {
-        	HAL_GPIO_WritePin(RS485_DE_GPIO_Port, RS485_DE_Pin, GPIO_PIN_SET);
+        	HAL_GPIO_WritePin(U3_DE_GPIO_Port, U3_DE_Pin, GPIO_PIN_SET);
         }
         break;
     }
