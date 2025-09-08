@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include "font.h"
+#include "ff.h"
 
 /* SPI 핸들 외부 참조 */
 extern SPI_HandleTypeDef hspi3;
@@ -57,6 +58,11 @@ extern SPI_HandleTypeDef hspi3;
 #define OLED_COL_START    0x1C          /* SSD1322 256px 폭에서 좌측 바이트 시작 */
 #define OLED_COL_END      0x5B          /* 0x1C + 0x7F = 0x9B (128 bytes = 256px) */
 
+extern SPI_HandleTypeDef hspi3;
+extern FIL fil;
+extern FRESULT fres;
+extern UINT br;
+
 /* 외부에 노출되는 함수(헤더에 static 금지) */
 void OLED_init(void);
 void OLED_fill(uint8_t gray);
@@ -73,4 +79,7 @@ void oled_drawRect(int x, int y, int width, int height, uint8_t gray);
 void oled_setPixelInBuffer(int x, int y, uint8_t gray);
 void oled_updateDisplay(void);
 void oled_clearBuffer(void);
+// SD에서 BMP(32bpp) 파일을 읽어 OLED에 표시
+void DisplayImageFromSD_Enhanced(char *fileName);
+void OLED_setCameraMode(void);
 #endif

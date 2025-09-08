@@ -1,11 +1,17 @@
 #include "oled.h"
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>   // memset 함수 사용을 위해 필요
 
-// 라이브러리 처럼 쓰시면 됩니다.
 
+// 라이브러리 처럼 쓰시면 됩니다.
 /* 내부에서만 사용하는 임시 변수 (static) */
+
 static uint8_t d = 0;
-extern closeFlag;
+extern int8_t closeFlag;
+static uint8_t frameBuffer[OLED_W/2 * OLED_H];  // 전체 화면 버퍼
+
+
 
 // OLED 명령어 모드!
 static void OLED_write_cmd(uint8_t cmd)
@@ -305,10 +311,13 @@ void oled_drawBitmap(uint8_t *bmpData, uint16_t width, uint16_t height, uint8_t 
     uint32_t rowSize = (width + 7) / 8;  // BMP 행 크기 (바이트 단위)
 
     // BMP는 아래쪽부터 저장되므로 뒤집어서 출력
-    for (uint16_t row = 0; row < height; row++) {
-        for (uint16_t col = 0; col < width; col++) {
+    for (uint16_t row = 0; row < height; row++)
+    {
+        for (uint16_t col = 0; col < width; col++)
+        {
             // 경계 체크
-            if ((x + col) >= OLED_W || (y + row) >= OLED_H) {
+            if ((x + col) >= OLED_W || (y + row) >= OLED_H)
+            {
                 continue;
             }
 
@@ -316,10 +325,13 @@ void oled_drawBitmap(uint8_t *bmpData, uint16_t width, uint16_t height, uint8_t 
             uint8_t bitIndex = 7 - (col % 8);
 
             // 해당 픽셀이 검은색인지 확인 (BMP에서 0=검정, 1=흰색)
-            if (!(bmpData[byteIndex] & (1 << bitIndex))) {
+            if (!(bmpData[byteIndex] & (1 << bitIndex)))
+            {
                 // OLED에 픽셀 그리기 (검은색을 15(흰색)로, 흰색을 0(검정)으로)
                 oled_drawPixel(x + col, y + row, 15);
-            } else {
+            }
+            else
+            {
                 oled_drawPixel(x + col, y + row, 0);
             }
         }
@@ -340,17 +352,6 @@ void oled_drawBitmapCenter(uint8_t *bmpData, uint16_t width, uint16_t height)
     oled_drawBitmap(bmpData, width, height, startX, startY);
 }
 
-/* 간단한 사각형 그리기 함수 (테스트용) */
-void oled_drawRect(int x, int y, int width, int height, uint8_t gray)
-{
-    for (int i = 0; i < width; i++) {
-        for (int j = 0; j < height; j++) {
-            oled_drawPixel(x + i, y + j, gray);
-        }
-    }
-}
-// oled.c에 추가
-static uint8_t frameBuffer[OLED_W/2 * OLED_H];  // 전체 화면 버퍼
 
 void oled_setPixelInBuffer(int x, int y, uint8_t gray)
 {
@@ -384,24 +385,150 @@ void oled_clearBuffer(void)
 {
     memset(frameBuffer, 0x00, sizeof(frameBuffer));
 }
-/* 플리커 방지를 위한 추가 설정 함수 */
-void OLED_setAntiFlicker(void)
+
+
+// SD카드에서 BMP 파일을 읽어 OLED에 출력하는 함수
+void DisplayImageFromSD_Enhanced(char *fileName)
 {
-    // 디스플레이가 켜진 후 추가 플리커 방지 설정
-    OLED_write_cmd(OLED_SETCLOCKDIVIDER);
-    d = 0x70;  // 더욱 느린 클록으로 설정
-    OLED_write_data(&d, 1);
+    if (closeFlag == 0)
+    {
+        CloseFile();
+    }
 
-    // 대비를 더 낮춤
-    OLED_write_cmd(OLED_SETCONTRAST);
-    d = 0xCF;  // 더 낮은 대비
-    OLED_write_data(&d, 1);
+    fres = f_open(&fil, fileName, FA_READ);
+    if (fres != FR_OK)
+    {
+        printf("Failed to open image file '%s'!\r\n", fileName);
+        return;
+    }
 
-    printf("Anti-flicker mode enabled\r\n");
+    // BMP 헤더 읽기 (기존과 동일)
+    uint8_t bmpHeader[54];
+    fres = f_read(&fil, bmpHeader, 54, &br);
+    if (fres != FR_OK || br < 54)
+    {
+        printf("Failed to read BMP header!\r\n");
+        f_close(&fil);
+        return;
+    }
+
+    uint32_t dataOffset = *(uint32_t*)&bmpHeader[10];
+    uint32_t width = *(uint32_t*)&bmpHeader[18];
+    uint32_t height = *(uint32_t*)&bmpHeader[22];
+    uint16_t bitsPerPixel = *(uint16_t*)&bmpHeader[28];
+
+    printf("Image: %lux%lu, %d bits\r\n", width, height, bitsPerPixel);
+
+    if (width > 256 || height > 64)
+    {
+        printf("Image too large! Max: 256x64\r\n");
+        f_close(&fil);
+        return;
+    }
+
+    // 32비트 처리 (24비트도 유사하게 수정)
+    if (bitsPerPixel == 32)
+    {
+        uint32_t rowSize = width * 4;
+        uint8_t *rowBuffer = (uint8_t*)malloc(rowSize);
+
+        if (rowBuffer == NULL)
+        {
+            printf("Memory allocation failed!\r\n");
+            f_close(&fil);
+            return;
+        }
+
+        // 1단계: 히스토그램 분석 (최소/최대 밝기 찾기)
+        uint8_t minGray = 255, maxGray = 0;
+
+        printf("Analyzing image histogram...\r\n");
+        for (int row = 0; row < height; row++)
+        {
+            int bmpRow = height - 1 - row;
+            uint32_t filePos = dataOffset + bmpRow * rowSize;
+
+            f_lseek(&fil, filePos);
+            fres = f_read(&fil, rowBuffer, rowSize, &br);
+            if (fres != FR_OK) break;
+
+            for (uint32_t col = 0; col < width; col++)
+            {
+                uint32_t pixelOffset = col * 4;
+                uint8_t b = rowBuffer[pixelOffset];
+                uint8_t g = rowBuffer[pixelOffset + 1];
+                uint8_t r = rowBuffer[pixelOffset + 2];
+
+                uint8_t gray = (r * 299 + g * 587 + b * 114) / 1000;
+                if (gray < minGray) minGray = gray;
+                if (gray > maxGray) maxGray = gray;
+            }
+        }
+
+        printf("Gray range: %d - %d\r\n", minGray, maxGray);
+
+        // 2단계: 히스토그램 스트레칭을 적용하여 실제 출력
+        oled_clearBuffer();
+
+        uint8_t startX = (256 - width) / 2;
+        uint8_t startY = (64 - height) / 2;
+
+        printf("Rendering with enhanced contrast...\r\n");
+        for (int row = 0; row < height; row++) {
+            int bmpRow = height - 1 - row;
+            uint32_t filePos = dataOffset + bmpRow * rowSize;
+
+            f_lseek(&fil, filePos);
+            fres = f_read(&fil, rowBuffer, rowSize, &br);
+            if (fres != FR_OK)
+            {
+            	break;
+            }
+
+            for (uint32_t col = 0; col < width; col++)
+            {
+                uint32_t pixelOffset = col * 4;
+                uint8_t b = rowBuffer[pixelOffset];
+                uint8_t g = rowBuffer[pixelOffset + 1];
+                uint8_t r = rowBuffer[pixelOffset + 2];
+
+                uint8_t gray = (r * 299 + g * 587 + b * 114) / 1000;
+
+                // 히스토그램 스트레칭 적용
+                uint8_t enhanced;
+                if (maxGray > minGray)
+                {
+                    enhanced = ((gray - minGray) * 15) / (maxGray - minGray);
+                }
+                else
+                {
+                    enhanced = 8;  // 단색 이미지인 경우 중간값
+                }
+
+                if (enhanced > 15)
+                {
+                	enhanced = 15;
+                }
+
+                int displayX = startX + col;
+                int displayY = startY + row;
+
+                if (displayX >= 0 && displayX < 256 && displayY >= 0 && displayY < 64)
+                {
+                    oled_setPixelInBuffer(displayX, displayY, enhanced);
+                }
+            }
+        }
+
+        free(rowBuffer);
+    }
+
+    oled_updateDisplay();
+    printf("Enhanced image displayed!\r\n");
+    f_close(&fil);
 }
 
 /* 촬영 모드 - 플리커 최소화 */
-/* 촬영 모드 - 플리커 최소화 (밝기 개선 버전) */
 void OLED_setCameraMode(void)
 {
     // 촬영을 위한 최적 설정 (밝기 유지하면서 플리커 감소)

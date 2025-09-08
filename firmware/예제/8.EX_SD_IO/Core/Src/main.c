@@ -18,9 +18,13 @@
 
 /*
  *
- *  SPI신호로 SD카드를 마운트 시키는 예제입니다.
- *
+ *  SPI신호로 SD카드를 마운트 시키고, 파일 입출력을 하는 예제입니다.
+ * 주의
+ * ----
+ * - 실제 프로젝트에서는 오류/예외 처리와 뮤텍스(멀티스레드)등의 고려가 더 필요합니다.
  */
+
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -35,6 +39,7 @@
 #include <stdio.h>
 #include "fatfs_sd.h"
 #include "string.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,22 +61,31 @@
 
 /* USER CODE BEGIN PV */
 
+// FatFs 관련 핸들
 FATFS fs;
 FATFS *pfs;
 FIL fil;
 FRESULT fres;
 DWORD fre_clust;
-uint32_t totalSpace, freeSpace;
+
+// 간단한 버퍼들
 char buffer[100];
+
+// SD 카드 삽입 상태 기억용
 static uint8_t previousCardState = 0;
+
+// 파일 열림 상태 (0: 열림, 1: 닫힘) — 기본은 닫힘
 int8_t closeFlag = 1;
 
+// 파일 I/O 길이
 uint32_t bw, br;
-char str[100];    // WriteFile, ReadFile에서 사용
-uint8_t closedFlag = 1;  // ReadFile에서 사용 (closeFlag -> closedFlag)
-char rxBuffer[100];  // UART 입력 버퍼
-uint8_t rxIndex = 0;
-uint8_t commandReady = 0;
+
+// UART 명령 파서용
+char rxBuffer[100];          // 입력 라인 버퍼
+uint8_t rxIndex = 0;         // 현재 입력 위치
+uint8_t commandReady = 0;    // 한 줄(엔터) 입력 완료 플래그
+volatile uint8_t g_rx;       // UART 수신 1바이트(인터럽트로 채움)
+
 
 /* USER CODE END PV */
 
@@ -79,6 +93,17 @@ uint8_t commandReady = 0;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
+/* 컴파일 경고 없애기용 프로토타입을 선언 */
+uint8_t SD_IsCardDetected(void);
+void SDMount(void);
+void SDUnmount(void);
+void OpenFile(char* fileName);
+void CloseFile(void);
+void CheckSize(void);
+void WriteFile(char* text);
+void ReadFile(char* fileName);
+void ProcessCommand(char *command);
+void ShowHelp(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -104,8 +129,15 @@ void SDMount(void) {
 		printf("SD Card mount error!!\r\n");
 	}
 }
-/* SD카드 마운트 해제 함수 */
+
+/* SD 카드 언마운트 (열린 파일이 있으면 먼저 닫기) */
 void SDUnmount(void) {
+
+	if (closeFlag == 0) // 열린 파일 있으면 닫기
+	{
+	    CloseFile();
+	}
+
 	fres = f_mount(NULL, "", 0);
 	if (fres == FR_OK) {
 		printf("SD Card Un-mounted Successfully!\r\n");
@@ -114,6 +146,7 @@ void SDUnmount(void) {
 	}
 }
 
+/* 파일 열기(없으면 생성). append 모드로 사용 */
 void OpenFile(char* fileName)
 {
     if(closeFlag == 0)
@@ -127,7 +160,7 @@ void OpenFile(char* fileName)
 
     if(fres == FR_OK)
     {
-        // 파일 끝으로 이동 (기존 내용 보존하며 append)
+    	// 항상 파일 끝으로 이동하여 이어쓰기(Append)
         f_lseek(&fil, f_size(&fil));
 
         printf("File '%s' ready for writing!\r\n", fileName);
@@ -146,9 +179,10 @@ void OpenFile(char* fileName)
         return;
     }
 
-    closeFlag = 0;
+    closeFlag = 0; // 이제 열림 상태
 }
 
+/* 열린 파일 닫기 */
 void CloseFile(void) {
 	fres = f_close(&fil);
 	if (fres == FR_OK) {
@@ -159,22 +193,20 @@ void CloseFile(void) {
 	closeFlag = 1;
 }
 
+/* SD 카드 여유 공간 조회 (KB 단위로 표시) */
 void CheckSize(void) {
-
-	fres = f_getfree("", &fre_clust, &pfs);
-	totalSpace = (uint32_t) ((pfs->n_fatent - 2) * pfs->csize * 0.5);
-	freeSpace = (uint32_t) ((fre_clust * pfs->csize * 0.5));
-	char mSize[100];
-	sprintf(mSize, "%lu", freeSpace);
-	if (fres == FR_OK) {
-		printf("The free Space is : ");
-		printf(mSize);
-		printf("\r\n");
-	} else if (fres != FR_OK) {
-		printf("The free Space could not be determined!\r\n");
-	}
+  fres = f_getfree("", &fre_clust, &pfs);
+  if (fres == FR_OK) {
+    // 클러스터 수 * 클러스터당 섹터수 * 섹터당 512바이트 → KB로 환산( /1024 = *0.5)
+    uint32_t freeKB = (uint32_t)(fre_clust * pfs->csize * 0.5f);
+    uint32_t totalKB = (uint32_t)((pfs->n_fatent - 2) * pfs->csize * 0.5f);
+    printf("Free: %lu KB / Total: %lu KB\r\n", freeKB, totalKB);
+  } else {
+    printf("Failed to get free space. (FRESULT=%d)\r\n", fres);
+  }
 }
 
+/* 현재 열린 파일 끝에 한 줄을 추가로 기록 */
 void WriteFile(char* text)
 {
     if (closeFlag)
@@ -182,6 +214,9 @@ void WriteFile(char* text)
         printf("No file is open! Use 'open <filename>' first.\r\n");
         return;
     }
+
+    // 안전하게 개행을 붙여 한 줄 단위로 기록
+    snprintf(buffer, sizeof(buffer), "%s\r\n", text);
 
     // 파일 끝으로 이동 (append)
     fres = f_lseek(&fil, f_size(&fil));
@@ -197,7 +232,7 @@ void WriteFile(char* text)
     if(fres == FR_OK)
     {
         printf("Writing Complete! %lu bytes written.\r\n", bw);
-        f_sync(&fil);  // 즉시 저장
+        f_sync(&fil);  // 즉시 저장(전원 차단에 대비)
     }
     else
     {
@@ -205,6 +240,7 @@ void WriteFile(char* text)
     }
 }
 
+/* 기존의 파일 내용 읽기 */
 void ReadFile(char* fileName)
 {
     // 현재 열린 파일이 있으면 닫기
@@ -245,36 +281,54 @@ void ReadFile(char* fileName)
 
 // ========== 인터페이스 함수 =================
 
-// 명령어 처리 함수
-void ProcessCommand(char *command) {
+/* 문자열 한 줄을 명령으로 해석해 실행 */
+void ProcessCommand(char *command)
+{
 	printf("Command received: %s\r\n", command);
 
-	if (strcmp(command, "mount") == 0) {
+	if (strcmp(command, "mount") == 0)
+	{
 		SDMount();
-	} else if (strcmp(command, "unmount") == 0) {
+	}
+	else if (strcmp(command, "unmount") == 0)
+	{
 		SDUnmount();
-	} else if (strncmp(command, "open ", 5) == 0) {
-		char *filename = command + 5;  // "open " 다음 부분
+	}
+	else if (strncmp(command, "open ", 5) == 0)
+	{
+		char *filename = command + 5;
 		OpenFile(filename);
-	} else if (strcmp(command, "close") == 0) {
+	}
+	else if (strcmp(command, "close") == 0)
+	{
 		CloseFile();
-	} else if (strncmp(command, "write ", 6) == 0) {
-		char *text = command + 6;  // "write " 다음 부분
+	}
+	else if (strncmp(command, "write ", 6) == 0)
+	{
+		char *text = command + 6;
 		WriteFile(text);
-	} else if (strncmp(command, "read ", 5) == 0) {
-		char *filename = command + 5;  // "read " 다음 부분
+	}
+	else if (strncmp(command, "read ", 5) == 0)
+	{
+		char *filename = command + 5;
 		ReadFile(filename);
-	} else if (strcmp(command, "size") == 0) {
+	}
+	else if (strcmp(command, "size") == 0)
+	{
 		CheckSize();
-	} else if (strcmp(command, "help") == 0) {
+	}
+	else if (strcmp(command, "help") == 0)
+	{
 		ShowHelp();
-	} else {
+	}
+	else
+	{
 		printf("Unknown command: %s\r\n", command);
 		printf("Type 'help' for available commands.\r\n");
 	}
 }
 
-// 도움말 함수
+/* 지원 명령 리스트 출력 */
 void ShowHelp(void)
 {
 	printf("\r\n=== Available Commands ===\r\n");
@@ -328,9 +382,9 @@ int main(void) {
 	}
 	/* USER CODE BEGIN 2 */
 
-	static uint8_t rxData;
-	HAL_UART_Receive_IT(&huart1, &rxData, 1);
+	HAL_UART_Receive_IT(&huart1, &g_rx, 1); // UART 전역변수로 받기!
 
+	// 시작 메시지
 	printf("\r\n=== SD Card Control System ===\r\n");
 	printf("Type 'help' for available commands.\r\n");
 	printf("Ready> ");
@@ -341,27 +395,29 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 
-		uint8_t currentCardState = SD_IsCardDetected();
+		uint8_t currentCardState = SD_IsCardDetected(); // 카드 삽입 감지
 
-		if (currentCardState && !previousCardState) {
-			// 카드 삽입 감지
-			HAL_Delay(500); // 디바운싱
+		if (currentCardState && !previousCardState) // 디바운싱
+		{
+			HAL_Delay(200); // 디바운싱
 			SDMount();
-		} else if (!currentCardState && previousCardState) {
-			// 카드 제거 감지
+		}
+		else if (!currentCardState && previousCardState) // 카드 제거 감지
+		{
 			SDUnmount();
 		}
 
 		previousCardState = currentCardState;
 
 		// 명령어 처리
-		if (commandReady) {
+		if (commandReady)
+		{
 			ProcessCommand(rxBuffer);
 			commandReady = 0;
-			printf("Ready> ");
+			printf("Ready> "); // 계속 사용자 입력을 감시
 		}
 
-		HAL_Delay(100);
+		HAL_Delay(10);
 
 		/* USER CODE END WHILE */
 
@@ -413,24 +469,28 @@ void SystemClock_Config(void) {
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+ * @brief UART 수신 인터럽트 콜백
+ *        1바이트씩 수신해 '\r' 또는 '\n'이 오면 한 줄 명령으로 처리한다.
+ */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-	if (huart->Instance == USART1) {
-		static uint8_t rxData;
-
-		if (rxData == '\r' || rxData == '\n')  // Enter 키 감지
-				{
-			rxBuffer[rxIndex] = '\0';  // 문자열 종료
-			commandReady = 1;
-			rxIndex = 0;
-		} else if (rxIndex < sizeof(rxBuffer) - 1) {
-			rxBuffer[rxIndex++] = rxData;
-		}
-
-		// 다음 문자 수신 대기
-		HAL_UART_Receive_IT(&huart1, &rxData, 1);
-	}
+  if (huart->Instance == USART1) {
+    if (g_rx == '\r' || g_rx == '\n') {
+      // 한 줄 종료 → 명령 처리 플래그 셋
+      rxBuffer[rxIndex] = '\0';
+      commandReady = 1;
+      rxIndex = 0;
+      printf("\r\n");  // 깔끔히 줄바꿈
+    } else if (rxIndex < sizeof(rxBuffer) - 1) {
+      // 일반 문자 → 버퍼에 축적, 동시에 에코백(선택)
+      rxBuffer[rxIndex++] = g_rx;
+      HAL_UART_Transmit(&huart1, (uint8_t*)&g_rx, 1, 10);
+    }
+    // 다음 1바이트 수신 예약
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)&g_rx, 1);
+  }
 }
-
 /* USER CODE END 4 */
 
 /**
