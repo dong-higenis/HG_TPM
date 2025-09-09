@@ -17,7 +17,7 @@
  */
 /*
  * JXBS-J001-FS-RS 풍량센서 (Modbus RTU) ↔ FDCAN 브릿지
- * Modbus RTU 프로토콜로 풍량센서와 통신하여 FDCAN으로 전송
+ * Modbus RTU 프로토콜로 풍량센서와 통신하여 FDCAN으로 전송하는 예제입니다.
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -67,7 +67,7 @@ typedef struct
     uint16_t start_addr;     // 시작 레지스터 주소 (빅엔디안)
     uint16_t register_count; // 레지스터 개수 (빅엔디안) ( 풍속값만 받아올것이므로 사실상 1 )
     uint16_t crc;           // CRC16 (리틀엔디안) (빅엔디안도 상관없지만, 공식적으로는 이렇게 쓰고있습니다.)
-} __attribute__((packed)) Modbus_Request_t;
+} __attribute__((packed)) Modbus_Request_t; // 패딩 줄이기
 
 
 /* Modbus RTU 응답 프레임 구조체 */
@@ -85,7 +85,6 @@ typedef struct
 typedef struct
 {
     float wind_speed;    // 풍속 (m/s)
-    float temperature;   // 온도 (°C)
     uint32_t timestamp;  // 타임스탬프
     uint8_t valid;       // 데이터 유효성
 } Wind_Sensor_Data_t; //센서에서 읽어온 데이터를 저장하는 구조체입니다.
@@ -117,7 +116,6 @@ HAL_StatusTypeDef Bridge_Sensor_to_FDCAN(Wind_Sensor_Data_t* sensor_data);
 static uint16_t Calculate_Modbus_CRC16(uint8_t *data, uint16_t length);
 void Request_Sensor_Data(void);
 void Parse_Wind_Sensor_Response(Modbus_Response_t* response);
-void Output_Sensor_Data_UART1(Wind_Sensor_Data_t* data);
 
 
 /* USER CODE END PFP */
@@ -206,13 +204,9 @@ HAL_StatusTypeDef Send_Modbus_Request(uint8_t slave_addr, uint8_t func_code, uin
 
     // UART3(RS485)로 전송
     HAL_StatusTypeDef status = HAL_UART_Transmit(&huart3, request_frame, MODBUS_REQUEST_SIZE, 1000);
-    if (status == HAL_OK)
+    if (status != HAL_OK)
     {
-        printf("Modbus Request Success!r\n");
-    }
-    else
-    {
-        printf("Modbus Request Failed: Status=%d\r\n", status);
+    	printf("Modbus Request Failed: Staㄴtus=%d\r\n", status);
     }
     return status;
 }
@@ -220,46 +214,20 @@ HAL_StatusTypeDef Send_Modbus_Request(uint8_t slave_addr, uint8_t func_code, uin
 /* Modbus RTU 응답 처리 */
 HAL_StatusTypeDef Process_Modbus_Response(uint8_t* response_data, uint16_t length)
 {
-    if (length < 5)
-    {
-    	return HAL_ERROR; // 최소 프레임 크기 , 데이터가 없다고 해도 반드시 8바이트중 5바이트는 지켜져야 프레임이된다.
-    }
+    if (length < 5) return HAL_ERROR;
 
+    // CRC 계산
+    uint16_t calc_crc = Calculate_Modbus_CRC16(response_data, length - 2);
 
-    Modbus_Response_t* response = (Modbus_Response_t*)response_data;
-
-    // 🔧 CRC 검증 - Modbus RTU는 CRC를 리틀 엔디안으로 전송
-    uint16_t calc_crc = Calculate_Modbus_CRC16(response_data, length - 2); // crc 제외!! 그래서 2를 뺌!
-
-
-    // 🔧 리틀 엔디안으로 CRC 읽기 (하위바이트 먼저)
+    // Modbus RTU는 리틀엔디안 표준 사용
     uint16_t recv_crc = response_data[length-2] | (response_data[length-1] << 8);
 
-    if (calc_crc != recv_crc)
-    {
-        // 🔧 반대 엔디안으로도 시도해보기
-        uint16_t recv_crc_alt = (response_data[length-2] << 8) | response_data[length-1];
-        printf("[CRC DEBUG] Trying Big-Endian: 0x%04X\r\n", recv_crc_alt);
-        if (calc_crc == recv_crc_alt)
-        {
-            printf("[CRC INFO] CRC matched with Big-Endian!\r\n");
-            recv_crc = recv_crc_alt;  // 빅 엔디안이 맞음
-        }
-        else
-        {
-            printf("Modbus CRC Error: Calc=0x%04X, Recv=0x%04X, Alt=0x%04X\r\n",
-                   calc_crc, recv_crc, recv_crc_alt);
-            return HAL_ERROR;
-        }
-    }
     // 슬레이브 주소 확인
-    if (response->slave_addr != MODBUS_SLAVE_ADDR)
-    {
-        printf("Wrong Slave Address: 0x%02X\r\n", response->slave_addr);
+    Modbus_Response_t* response = (Modbus_Response_t*)response_data;
+    if (response->slave_addr != MODBUS_SLAVE_ADDR) {
         return HAL_ERROR;
     }
-    printf("[SUCCESS] CRC OK! Processing sensor data...\r\n");
-    // 풍량센서 응답 파싱
+
     Parse_Wind_Sensor_Response(response);
     return HAL_OK;
 }
@@ -321,7 +289,7 @@ HAL_StatusTypeDef Bridge_Sensor_to_FDCAN(Wind_Sensor_Data_t* sensor_data)
     // FDCAN 헤더 설정
     FDCAN_TxHeaderTypeDef TxHeader;
 
-    // 보내는 CanId 등..
+    // CAN 송신...
     TxHeader.Identifier = 0x501; // 풍량센서 전용 CAN ID
     TxHeader.IdType = FDCAN_STANDARD_ID;
     TxHeader.TxFrameType = FDCAN_DATA_FRAME;
@@ -332,9 +300,9 @@ HAL_StatusTypeDef Bridge_Sensor_to_FDCAN(Wind_Sensor_Data_t* sensor_data)
     TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
     TxHeader.MessageMarker = 0;
     HAL_StatusTypeDef status = HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &TxHeader, can_data);
-    if (status == HAL_OK) {
+    if (status != HAL_OK) {
 
-        printf("CAN SENT!!\r\n");
+        printf("CAN Send Failed!!\r\n");
     }
     return status;
 }
@@ -381,35 +349,50 @@ int main(void)
 
   while (1) {
 
-	     // 1초마다 센서 데이터 요청
-	     if (HAL_GetTick() - last_request_time >= 1000)
+	     // 0.5초마다 센서 데이터 요청
+	     if (HAL_GetTick() - last_request_time >= 500)
 	     {
 	         // 이전 데이터 정리
 	         modbus_rx_index = 0;
 	         modbus_frame_ready = 0;
+
+	         // 센서 데이터 요청
 	         Request_Sensor_Data();
+
+	         // 타이밍 리셋
 	         last_request_time = HAL_GetTick();
-	         last_rx_time = HAL_GetTick(); // 타이밍 리셋
+	         last_rx_time = HAL_GetTick();
 	     }
-	     // 타이밍 기반 프레임 완료 검출 (50ms 타임아웃)
+
+	     // 50ms 동안 새로운 바이트가 오지 않으면 프레임 완료로 판단
 	     if (modbus_rx_index > 0 && !modbus_frame_ready &&
-	         (HAL_GetTick() - last_rx_time > 50)) {
-	         modbus_frame_ready = 1;
+	         (HAL_GetTick() - last_rx_time > 50))
+	     {
+	         modbus_frame_ready = 1; // 프레임 완료 플래그 설정
 	         printf("\r\n[TIMEOUT] Frame complete by timeout: %d bytes\r\n", modbus_rx_index);
 	     }
+
 	     // Modbus 응답 처리
-	     if (modbus_frame_ready) {
+	     if (modbus_frame_ready)
+	     {
+
 	         printf("\r\n[INFO] ===== Modbus frame ready, length: %d =====\r\n", modbus_rx_index);
+
 	         // Raw 데이터 출력
 	         printf("[RAW] ");
-	         for (int i = 0; i < modbus_rx_index; i++) {
+	         for (int i = 0; i < modbus_rx_index; i++)
+	         {
 	             printf("%02X ", modbus_rx_buffer[i]);
 	         }
-	         printf("\r\n");
-	         // 최소 길이 체크 (5바이트 이상)
-	         if (modbus_rx_index >= 5) {
+	         printf("\r\n"); // 개행
+
+	         // 최소 길이 체크 (5바이트 이상, CRC를 제외한 나머지 프레임 구성요소가 5바이트)
+	         if (modbus_rx_index >= 5)
+	         {
 	             Process_Modbus_Response(modbus_rx_buffer, modbus_rx_index);
-	         } else {
+	         }
+	         else
+	         {
 	             printf("[ERROR] Frame too short: %d bytes\r\n", modbus_rx_index);
 	         }
 	         // 버퍼 리셋
@@ -418,11 +401,14 @@ int main(void)
 	         memset(modbus_rx_buffer, 0, sizeof(modbus_rx_buffer));
 	     }
 	     // OLED 업데이트 (기존과 동일)
-	     if (sensor_data.valid) {
+	     if (sensor_data.valid)
+	     {
 	         snprintf(buf, sizeof(buf), "%.1f m/s", sensor_data.wind_speed);
 	         oled_drawString(80, 20, buf, &font_07x10, 15);
-	     } else {
-	         oled_drawString(80, 20, "WAIT...", &font_07x10, 15);
+	     }
+	     else
+	     {
+	         oled_drawString(80, 20, "WAIT...", &font_07x10, 15); // 유효한 센서값이 들어오지 않을때 출력
 	         oled_drawString(0, 40, "CAN Transmitting......", &font_07x10, 15);
 	     }
     /* USER CODE END WHILE */
@@ -473,7 +459,7 @@ void SystemClock_Config(void)
 }
 /* USER CODE BEGIN 4 */
 
-// UART 수신 콜백 수정 ( UART3 == 센서 )
+// UART 수신 콜백 ( UART3 == 센서 )
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART3)
@@ -483,12 +469,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         // 수신된 바이트 저장
         modbus_rx_buffer[modbus_rx_index++] = rx_byte;
         last_rx_time = HAL_GetTick();
-        // 7바이트 강제 완료 제거 - 타이밍으로만 판단
+
+
         if (modbus_rx_index >= sizeof(modbus_rx_buffer) - 1)
         {
-            modbus_frame_ready = 1;
+            modbus_frame_ready = 1; // 프레임 받을 준비 완료
             printf("\r\n[DEBUG] Buffer full, frame ready\r\n");
         }
+
         // 다음 바이트 수신 준비
         HAL_UART_Receive_IT(&huart3, &rx_byte, 1);
     }
