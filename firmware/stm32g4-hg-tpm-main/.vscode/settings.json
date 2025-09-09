@@ -1,0 +1,29 @@
+{
+  "files.associations": {
+    "cli.h": "c",
+    "fram.h": "c",
+    "usbd_cdc_if.h": "c",
+    "usbd_cdc.h": "c",
+    "hw_def.h": "c",
+    "cli_gui.h": "c",
+    "adc.h": "c",
+    "cmd_thread.h": "c",
+    "can.h": "c",
+    "thread.h": "c",
+    "cmd_uart.h": "c",
+    "ap_def.h": "c",
+    "cstddef": "cpp",
+    "type_traits": "cpp",
+    "hw.h": "c",
+    "qbuffer.h": "c",
+    "swtimer.h": "c",
+    "usb.h": "c",
+    "event.h": "c",
+    "i2c.h": "c",
+    "gpio.h": "c",
+    "cmd.h": "c",
+    "cdc.h": "c",
+    "mode.h": "c",
+    "button.h": "c"
+  }
+}

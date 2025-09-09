@@ -1,0 +1,31 @@
+{
+  "files.associations": {
+    "cli.h": "c",
+    "fram.h": "c",
+    "usbd_cdc_if.h": "c",
+    "usbd_cdc.h": "c",
+    "hw_def.h": "c",
+    "cli_gui.h": "c",
+    "adc.h": "c",
+    "ap.h": "c",
+    "ap_def.h": "c",
+    "hw.h": "c",
+    "oled.h": "c",
+    "stm32g4xx.h": "c",
+    "usbd_def.h": "c",
+    "usbd_core.h": "c",
+    "qbuffer.h": "c",
+    "can.h": "c",
+    "bsp.h": "c",
+    "spi.h": "c",
+    "ssd1306.h": "c",
+    "gpio.h": "c",
+    "ssd1322_regs.h": "c",
+    "han.h": "c",
+    "lcd_fonts.h": "c",
+    "lcd.h": "c",
+    "font_han.h": "c",
+    "ssd1322.h": "c",
+    "button.h": "c"
+  }
+}
