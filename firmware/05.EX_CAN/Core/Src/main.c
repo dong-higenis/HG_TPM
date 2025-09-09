@@ -17,21 +17,20 @@
  */
 
 /**
- * @brief 버튼을 누르면 인터럽트 콜백함수가 호출됩니다.
- * - 해당 콜백함수 내에서는 감지변화만 체크하며,
- * - 메인 제어는 폴링방식으로 하고있는 예제입니다.
+ *
+ *  @brief CAN 통신을 이해하고, UART로 메시지 전송 , 수신을 확인해보는 예제입니다.
+ *
  */
-
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "spi.h"
+#include "fdcan.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "oled.h"
-#include "font.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,25 +52,11 @@
 
 /* USER CODE BEGIN PV */
 
-// 글씨 밝기
-enum bright
-{
-  BRIGHT_OFF = 0, // 완전히 꺼짐 (보이지 않음)
-  BRIGHT_LOW = 1, // 어둡게 (OFF 상태 표시용)
-  BRIGHT_ON = 15  // 밝게 (ON 상태 표시용)
-};
+FDCAN_TxHeaderTypeDef txHeader; // CAN 메시지를 담을 봉투
+FDCAN_RxHeaderTypeDef rxHeader;
 
-// 버튼 상태와 업데이트 플래그
-volatile uint8_t btn1_keep = 0;
-volatile uint8_t btn2_keep = 0;
-volatile uint32_t btn1_last_edge = 0;
-volatile uint32_t btn2_last_edge = 0;
-
-uint8_t btn1_state = 0; // 현재 안정된 상태
-uint8_t btn2_state = 0;
-volatile uint8_t oled_update_needed = 0;
-
-#define DEBOUNCE_MS 50
+uint8_t can_tx[8] = {'H', 'E', 'L', 'L', 'O', 0, 0, 0}; // CAN 메시지의 내용
+uint8_t can_rx[8];
 
 /* USER CODE END PV */
 
@@ -83,34 +68,70 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void debouncedBTN(void)
+
+/**
+ * @brief printf 함수를 사용하기 위한 함수.
+ */
+
+int __io_putchar(int ch)
 {
-  uint32_t now = HAL_GetTick();
+  (void)HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 100);
+  return ch;
+}
 
-  if (btn1_keep && (now - btn1_last_edge) >= DEBOUNCE_MS)
+/**
+ * @brief CAN 초기화 및 시작
+ */
+void FDCAN_Init(void)
+{
+
+  // 특정한 CAN_id 값으로 전송된 메시지만을 수신하기 위해 필터를 설정합니다.
+  FDCAN_FilterTypeDef sFilterConfig =
+      {0};
+  sFilterConfig.IdType = FDCAN_STANDARD_ID;
+  sFilterConfig.FilterIndex = 0;
+  sFilterConfig.FilterType = FDCAN_FILTER_MASK;
+  sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
+  sFilterConfig.FilterID1 = 0x500; // 필터링 할 CAN_id
+  sFilterConfig.FilterID2 = 0x7FF; // 11비트 모두 비교 = 정확 일치
+  if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK)
   {
-    btn1_keep = 0;
-    uint8_t cur = (HAL_GPIO_ReadPin(BTN1_GPIO_Port, BTN1_Pin) == GPIO_PIN_RESET);
-
-    if (cur != btn1_state)
-    {
-      btn1_state = cur;
-      oled_update_needed = 1;
-    }
+    Error_Handler();
   }
 
-  if (btn2_keep && (now - btn2_last_edge) >= DEBOUNCE_MS)
+  // CAN 실행
+  HAL_StatusTypeDef result = HAL_FDCAN_Start(&hfdcan1);
+  if (result != HAL_OK)
   {
-    btn2_keep = 0;
-    uint8_t cur = (HAL_GPIO_ReadPin(BTN2_GPIO_Port, BTN2_Pin) == GPIO_PIN_RESET);
+    printf("FDCAN Start 실패\r\n");
+  }
 
-    if (cur != btn2_state)
-    {
-      btn2_state = cur;
-      oled_update_needed = 1;
-    }
+  HAL_FDCAN_ActivateNotification(&hfdcan1,
+                                 FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
+  if (result != HAL_OK)
+  {
+    printf("FDCAN Notification 등록 실패\r\n");
   }
 }
+
+/**
+ * @brief CAN 메시지 송신
+ */
+void FDCAN_SendMessage(void)
+{
+  txHeader.Identifier = 0x500; // 전송할때 같이 보내는 CAN_id
+  txHeader.IdType = FDCAN_STANDARD_ID;
+  txHeader.TxFrameType = FDCAN_DATA_FRAME;
+  txHeader.DataLength = FDCAN_DLC_BYTES_8;
+  txHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+  txHeader.BitRateSwitch = FDCAN_BRS_OFF;
+  txHeader.FDFormat = FDCAN_CLASSIC_CAN;
+  txHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+  txHeader.MessageMarker = 0;
+
+  HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &txHeader, can_tx); // 보내기!!
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -142,17 +163,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_SPI3_Init();
+  MX_USART1_UART_Init();
+  MX_FDCAN1_Init();
   /* USER CODE BEGIN 2 */
-  OLED_init();  // oled 초기화
-  OLED_fill(0); // oled 전체를 검은색으로 칠함
-
-  // (x좌표, y좌표, String, font, 밝기)
-  OLED_drawString(20, 0, "Button List", &font_07x10, 15); // 화면 위쪽
-  OLED_drawString(0, 20, "Button1", &font_07x10, 15);     
-  OLED_drawString(60, 20, "OFF", &font_07x10, 1);         // OFF는 어둡게...
-  OLED_drawString(0, 40, "Button2", &font_07x10, 15);     
-  OLED_drawString(60, 40, "OFF", &font_07x10, 1);
+  FDCAN_Init();
+  FDCAN_SendMessage();
 
   /* USER CODE END 2 */
 
@@ -160,28 +175,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    debouncedBTN();
-    // 인터럽트에서 플래그가 설정되면 OLED 업데이트
-    if (oled_update_needed)
-    {
-      oled_update_needed = 0; // 플래그 클리어
+    /* USER CODE END WHILE */
 
-      // OLED 업데이트
-      OLED_drawString(60, 20, btn1_state ? "ON " : "OFF",
-                      &font_07x10, btn1_state ? BRIGHT_ON : BRIGHT_LOW);
-      OLED_drawString(60, 40, btn2_state ? "ON " : "OFF",
-                      &font_07x10, btn2_state ? BRIGHT_ON : BRIGHT_LOW);
-    }
-
-    // 메인 루프에서는 다른 작업 가능
-    HAL_Delay(10);
+    /* USER CODE BEGIN 3 */
   }
-
-  /* USER CODE END WHILE */
-
-  /* USER CODE BEGIN 3 */
+  /* USER CODE END 3 */
 }
-/* USER CODE END 3 */
 
 /**
  * @brief System Clock Configuration
@@ -230,23 +229,15 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /**
- * @brief 콜백은 버튼의 변화만을 감지하는 역할입니다.
+ * @brief CAN 수신 콜백함수 추가
  */
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
-  uint32_t now = HAL_GetTick();
 
-  if (GPIO_Pin == BTN1_Pin)
+  if (RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE)
   {
-    btn1_last_edge = now;
-    btn1_keep = 1;
-  }
-
-  if (GPIO_Pin == BTN2_Pin)
-  {
-    btn2_last_edge = now;
-    btn2_keep = 1;
+    HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rxHeader, can_rx);
+    printf("CAN Message Alived!!\r\n");
   }
 }
 /* USER CODE END 4 */
