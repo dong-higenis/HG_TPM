@@ -46,20 +46,16 @@
 SPI_HandleTypeDef hspi3;
 
 // 글씨 밝기
-enum fade
+enum bright
 {
-	FADE_OFF = 0,	 // 완전히 꺼짐 (보이지 않음)
-	FADE_LOW = 1,	 // 어둡게 (OFF 상태 표시용)
-	FADE_BRIGHT = 15 // 밝게 (ON 상태 표시용)
+	BRIGHT_OFF = 0, // 완전히 꺼짐 (보이지 않음)
+	BRIGHT_LOW = 1, // 어둡게 (OFF 상태 표시용)
+	BRIGHT_ON = 15	// 밝게 (ON 상태 표시용)
 };
 
-// 버튼이 눌렸을때, OLED에 표시를 하게 만들기위한 트리거용 변수
+// btn flag 변수로 OLED 화면 갱신을 트리거 합니다.
 int btn1_flag = 0;
 int btn2_flag = 0;
-
-int count = 0;
-
-char buf[16]; // 변환용 버퍼
 
 /* USER CODE BEGIN PV */
 
@@ -76,10 +72,11 @@ static void MX_SPI3_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/**
+ * @brief 버튼상태 감지 함수
+ */
 void buttonLedTask(void)
 {
-
-	// btn flag 변수로 OLED 화면 갱신을 트리거 합니다.
 
 	if (HAL_GPIO_ReadPin(BTN1_GPIO_Port, BTN1_Pin) == GPIO_PIN_RESET)
 	{
@@ -144,11 +141,11 @@ int main(void)
 	OLED_fill(0); // oled 전체를 검은색으로 칠함
 
 	// (x좌표, y좌표, String, font, 밝기)
-	oled_drawString(20, 0, "Button List", &font_07x10, FADE_BRIGHT); // 화면 위쪽
-	oled_drawString(0, 20, "Button1", &font_07x10, FADE_BRIGHT);	 // 화면 왼쪽
-	oled_drawString(60, 20, "OFF", &font_07x10, FADE_LOW);			 // 화면 중앙, OFF는 어둡게...
-	oled_drawString(0, 40, "Button2", &font_07x10, FADE_BRIGHT);	 // Button1 아래
-	oled_drawString(60, 40, "OFF", &font_07x10, FADE_LOW);
+	OLED_drawString(20, 0, "Button List", &font_07x10, BRIGHT_ON); // 화면 위쪽
+	OLED_drawString(0, 20, "Button1", &font_07x10, BRIGHT_ON);
+	OLED_drawString(60, 20, "OFF", &font_07x10, BRIGHT_LOW); // OFF는 어둡게
+	OLED_drawString(0, 40, "Button2", &font_07x10, BRIGHT_ON);
+	OLED_drawString(60, 40, "OFF", &font_07x10, BRIGHT_LOW);
 
 	/* USER CODE END 2 */
 
@@ -156,29 +153,9 @@ int main(void)
 	/* USER CODE BEGIN WHILE */
 	while (1)
 	{
-
 		buttonLedTask();
-
-		if (btn1_flag && btn2_flag)
-		{
-			oled_drawString(60, 20, "ON ", &font_07x10, FADE_BRIGHT);
-			oled_drawString(60, 40, "ON ", &font_07x10, FADE_BRIGHT);
-		}
-		else if (btn1_flag)
-		{
-			oled_drawString(60, 20, "ON ", &font_07x10, FADE_BRIGHT);
-			oled_drawString(60, 40, "OFF", &font_07x10, FADE_LOW);
-		}
-		else if (btn2_flag)
-		{
-			oled_drawString(60, 20, "OFF", &font_07x10, FADE_LOW);
-			oled_drawString(60, 40, "ON ", &font_07x10, FADE_BRIGHT);
-		}
-		else
-		{
-			oled_drawString(60, 20, "OFF", &font_07x10, FADE_LOW);
-			oled_drawString(60, 40, "OFF", &font_07x10, FADE_LOW);
-		}
+		OLED_drawString(60, 20, btn1_flag ? "ON " : "OFF", &font_07x10, btn1_flag ? BRIGHT_ON : BRIGHT_LOW);
+		OLED_drawString(60, 40, btn2_flag ? "ON " : "OFF", &font_07x10, btn2_flag ? BRIGHT_ON : BRIGHT_LOW);
 
 		/* USER CODE END WHILE */
 
