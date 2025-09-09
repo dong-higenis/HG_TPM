@@ -59,7 +59,7 @@
 
 // 파일 시스템 라이브러리 핵심 구조체들
 FATFS fs;
-FATFS *pfs;
+FATFS *p_fs;
 FIL fil;
 FRESULT fres;
 DWORD fre_clust;
@@ -81,7 +81,7 @@ int __io_putchar(int ch)
   return ch;
 }
 
-void SDMount(void)
+void sdMount(void)
 {
   fres = f_mount(&fs, "", 0);
   if (fres == FR_OK)
@@ -136,7 +136,7 @@ int main(void)
 
   /* Wait for SD module reset */
   HAL_Delay(500);
-  SDMount();
+  sdMount();
   /* USER CODE END 2 */
 
   /* Infinite loop */

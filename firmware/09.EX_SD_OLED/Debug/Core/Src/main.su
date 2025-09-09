@@ -1,0 +1,15 @@
+../Core/Src/main.c:127:5:__io_putchar	16	static
+../Core/Src/main.c:134:9:SD_IsCardDetected	8	static
+../Core/Src/main.c:140:6:SDMount	16	static
+../Core/Src/main.c:156:6:SDUnmount	16	static
+../Core/Src/main.c:175:6:OpenFile	24	static
+../Core/Src/main.c:205:6:CloseFile	16	static
+../Core/Src/main.c:222:6:CheckSize	16	static
+../Core/Src/main.c:241:6:WriteFile	24	static
+../Core/Src/main.c:277:6:ReadFile	16	static
+../Core/Src/main.c:320:6:ProcessCommand	16	static
+../Core/Src/main.c:370:6:ShowHelp	8	static
+../Core/Src/main.c:391:5:main	16	static
+../Core/Src/main.c:453:6:SystemClock_Config	88	static
+../Core/Src/main.c:490:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/main.c:515:6:Error_Handler	4	static,ignoring_inline_asm

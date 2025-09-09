@@ -1,0 +1,15 @@
+../Core/Src/main.c:127:5:__io_putchar	1
+../Core/Src/main.c:134:9:SD_IsCardDetected	1
+../Core/Src/main.c:140:6:SDMount	2
+../Core/Src/main.c:156:6:SDUnmount	3
+../Core/Src/main.c:175:6:OpenFile	4
+../Core/Src/main.c:205:6:CloseFile	2
+../Core/Src/main.c:222:6:CheckSize	2
+../Core/Src/main.c:241:6:WriteFile	5
+../Core/Src/main.c:277:6:ReadFile	6
+../Core/Src/main.c:320:6:ProcessCommand	11
+../Core/Src/main.c:370:6:ShowHelp	1
+../Core/Src/main.c:391:5:main	7
+../Core/Src/main.c:453:6:SystemClock_Config	3
+../Core/Src/main.c:490:6:HAL_UART_RxCpltCallback	5
+../Core/Src/main.c:515:6:Error_Handler	1
