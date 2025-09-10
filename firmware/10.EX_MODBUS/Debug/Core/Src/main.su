@@ -1,0 +1,9 @@
+../Core/Src/main.c:117:5:__io_putchar	16	static
+../Core/Src/main.c:128:17:calcCRC16	24	static
+../Core/Src/main.c:150:19:modbusRequest	40	static
+../Core/Src/main.c:190:19:modbusResponse	24	static
+../Core/Src/main.c:216:6:parseSensorData	24	static
+../Core/Src/main.c:235:5:main	16	static
+../Core/Src/main.c:327:6:SystemClock_Config	88	static
+../Core/Src/main.c:371:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/main.c:393:6:Error_Handler	4	static,ignoring_inline_asm

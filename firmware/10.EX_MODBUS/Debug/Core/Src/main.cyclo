@@ -1,0 +1,9 @@
+../Core/Src/main.c:117:5:__io_putchar	1
+../Core/Src/main.c:128:17:calcCRC16	4
+../Core/Src/main.c:150:19:modbusRequest	3
+../Core/Src/main.c:190:19:modbusResponse	3
+../Core/Src/main.c:216:6:parseSensorData	3
+../Core/Src/main.c:235:5:main	7
+../Core/Src/main.c:327:6:SystemClock_Config	3
+../Core/Src/main.c:371:6:HAL_UART_RxCpltCallback	3
+../Core/Src/main.c:393:6:Error_Handler	1
