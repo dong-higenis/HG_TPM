@@ -81,14 +81,25 @@ SD 카드 마운트 후, 파일 입출력을 수행하는 예제입니다.
 ## EX_SD_OLED  
 SD 카드 마운트 및 파일 입출력 여부를 확인하고, BMP 형식의 간단한 이미지를 OLED에 출력하는 예제입니다.  
 
+---
+
 ## EX_MODBUS
 Modbus RTU 를 사용하는 풍량센서 측정값을 실시간으로 받아보는 예제입니다.
  - TeraTerm을 통해 실시간으로 센서 측정값을 확인가능합니다.
  - 단순히 직접 timeout을 설정하고있고, DE핀도 제어하지 않고있어서 보통의 USART로 센서값을 받고있는것과 같습니다.
 
+---
+
 ## EX_MODBUS_IDLE 
 TC레지스터값을 확인하고, DE핀을 제어하여 반이중 통신으로서, 제활약을 하며, 
 timeout을 직접 설정하지 않고, Idle line을 이용하여, Frame단위로 수신여부를 판단하여 안정적인 통신구조를 만든 예제입니다.
 
+---
+
 ## EX_MODBUS_OLED
 Modbus RTU 를 사용하는 풍량센서 측정값을 OLED에 출력하는 예제입니다.
+
+---
+
+자세한 설명은 아래 링크를 참조해 주세요.
+# [STM32 HG TPM CONTROLLER](https://higenis.notion.site/STM32-HG-TPM-CONTROLLER-26379ff1b1b380b7944ec3346f1bc43b)
