@@ -1,0 +1,3 @@
+../Core/Src/Apps/ANIMATION/expression.c:4:5:lerp	1
+../Core/Src/Apps/ANIMATION/expression.c:9:6:eyesSmoothTransition	7
+../Core/Src/Apps/ANIMATION/expression.c:70:6:eyesInstantExpression	13

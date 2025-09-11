@@ -1,0 +1,6 @@
+../Core/Src/ap/ap_sensor.c:12:17:calcCRC16	24	static
+../Core/Src/ap/ap_sensor.c:28:6:apSensorInit	16	static
+../Core/Src/ap/ap_sensor.c:42:6:apSensorRequest	32	static
+../Core/Src/ap/ap_sensor.c:86:6:apSensorUpdate	24	static
+../Core/Src/ap/ap_sensor.c:122:7:apSensorGetSpeed	16	static
+../Core/Src/ap/ap_sensor.c:127:6:apSensorIsValid	16	static

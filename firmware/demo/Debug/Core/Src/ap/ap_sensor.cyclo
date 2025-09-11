@@ -1,0 +1,6 @@
+../Core/Src/ap/ap_sensor.c:12:17:calcCRC16	4
+../Core/Src/ap/ap_sensor.c:28:6:apSensorInit	1
+../Core/Src/ap/ap_sensor.c:42:6:apSensorRequest	4
+../Core/Src/ap/ap_sensor.c:86:6:apSensorUpdate	7
+../Core/Src/ap/ap_sensor.c:122:7:apSensorGetSpeed	1
+../Core/Src/ap/ap_sensor.c:127:6:apSensorIsValid	1

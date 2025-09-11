@@ -1,0 +1,3 @@
+../Core/Src/Apps/ANIMATION/expression.c:4:5:lerp	24	static
+../Core/Src/Apps/ANIMATION/expression.c:9:6:eyesSmoothTransition	80	static
+../Core/Src/Apps/ANIMATION/expression.c:70:6:eyesInstantExpression	24	static

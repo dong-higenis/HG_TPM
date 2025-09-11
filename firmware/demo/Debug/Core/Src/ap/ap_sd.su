@@ -1,0 +1,5 @@
+../Core/Src/ap/ap_sd.c:8:9:sdDiskInitialize	32	static
+../Core/Src/ap/ap_sd.c:109:9:sdDiskStatus	16	static
+../Core/Src/ap/ap_sd.c:116:9:sdDiskRead	24	static
+../Core/Src/ap/ap_sd.c:157:9:sdDiskWrite	24	static
+../Core/Src/ap/ap_sd.c:212:9:sdDiskIoctl	56	static

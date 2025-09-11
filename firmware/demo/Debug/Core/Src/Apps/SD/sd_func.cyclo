@@ -1,0 +1,9 @@
+../Core/Src/Apps/SD/sd_func.c:21:9:sdCardInit	2
+../Core/Src/Apps/SD/sd_func.c:32:9:sdCardMount	2
+../Core/Src/Apps/SD/sd_func.c:42:9:sdCardUnMount	2
+../Core/Src/Apps/SD/sd_func.c:52:6:sdIsCardDetected	5
+../Core/Src/Apps/SD/sd_func.c:67:6:openFile	4
+../Core/Src/Apps/SD/sd_func.c:102:6:closeFile	3
+../Core/Src/Apps/SD/sd_func.c:117:6:checkSize	2
+../Core/Src/Apps/SD/sd_func.c:134:6:writeFile	4
+../Core/Src/Apps/SD/sd_func.c:168:6:readFile	6

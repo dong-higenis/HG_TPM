@@ -1,0 +1,4 @@
+../Core/Src/hw/hw_modbus.c:6:10:hwModbusCRC16	4
+../Core/Src/hw/hw_modbus.c:23:6:hwModbusTransmit	2
+../Core/Src/hw/hw_modbus.c:56:6:hwModbusReceive	6
+../Core/Src/hw/hw_modbus.c:84:6:hwModbusSetDE	1
